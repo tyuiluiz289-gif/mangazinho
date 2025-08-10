@@ -1,0 +1,303 @@
+<!doctype html>
+<html lang="pt-br">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Mangazinho</title>
+  <meta name="theme-color" content="#0b1220">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="apple-touch-icon" href="icons/icon-192.png">
+  <style>
+    :root{--bg:#0b1220;--card:#0f172a;--ink:#e5e7eb;--muted:#9ca3af;--cta:#22d3ee;--accent:#a78bfa}
+    *{box-sizing:border-box} html,body{height:100%} body{margin:0;background:linear-gradient(180deg,#0b1220,#0e172a);color:var(--ink);font-family:Inter,system-ui,Segoe UI,Roboto,Arial,sans-serif}
+    header{position:sticky;top:0;z-index:10;background:rgba(11,18,32,.85);backdrop-filter:blur(10px);border-bottom:1px solid rgba(255,255,255,.06);display:flex;gap:.75rem;align-items:center;padding:.8rem .9rem}
+    header h1{margin:0;font-size:1.05rem;letter-spacing:.4px}
+    header .spacer{flex:1}
+    .icon{background:transparent;border:1px solid rgba(255,255,255,.12);color:var(--ink);border-radius:10px;padding:.45rem .6rem;cursor:pointer}
+    .icon:hover{background:rgba(255,255,255,.06)}
+    .container{max-width:1000px;margin:0 auto;padding:1rem;display:grid;gap:1rem}
+    .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:1rem}
+    .card{background:var(--card);border:1px solid rgba(255,255,255,.06);border-radius:16px;overflow:hidden;display:flex;flex-direction:column}
+    .thumb{aspect-ratio:3/4;background:#111827;display:flex;align-items:center;justify-content:center}
+    .thumb img{width:100%;height:100%;object-fit:cover}
+    .meta{padding:.75rem}
+    .title{font-weight:700}
+    .sub{font-size:.8rem;color:var(--muted)}
+    .row{display:flex;gap:.5rem;align-items:center}
+    .btn{background:var(--cta);color:#001419;border:0;border-radius:12px;padding:.65rem 1rem;font-weight:700;cursor:pointer}
+    .btn.secondary{background:transparent;color:var(--ink);border:1px solid rgba(255,255,255,.18)}
+    .fab{position:fixed;right:1rem;bottom:1rem;padding:.85rem 1rem;border-radius:14px;background:var(--accent);border:0;color:#0b1020;font-weight:900}
+    dialog{border:0;border-radius:16px;background:#0f172a;color:var(--ink);max-width:640px;width:92%}
+    dialog::backdrop{background:rgba(0,0,0,.5)}
+    .modal{display:grid;gap:.75rem;padding:1rem}
+    input,textarea{background:#0b1220;border:1px solid rgba(255,255,255,.08);color:var(--ink);border-radius:12px;padding:.7rem .9rem;outline:none}
+    .toolbar{display:flex;gap:.6rem;flex-wrap:wrap}
+    .hint{color:var(--muted);font-size:.85rem}
+    /* Reader */
+    .reader{position:fixed;inset:0;background:#000;display:none;flex-direction:column}
+    .rbar{position:sticky;top:0;background:rgba(0,0,0,.7);display:flex;align-items:center;gap:.5rem;padding:.5rem;border-bottom:1px solid rgba(255,255,255,.1)}
+    .rbar .crumb{color:#c4c4c4;font-size:.9rem}
+    .rbody{flex:1;overflow:auto;display:flex;justify-content:center}
+    .page{max-width:min(98vw,980px);width:100%;display:block;margin:0 auto}
+    .nav{position:fixed;inset:auto 0 0 0;display:flex;justify-content:center;gap:.5rem;padding:.6rem;background:rgba(0,0,0,.7);border-top:1px solid rgba(255,255,255,.1)}
+    .nav button{background:#111827;color:#e5e7eb;border:1px solid rgba(255,255,255,.18);border-radius:12px;padding:.5rem .9rem}
+    .hidden{display:none}
+  </style>
+</head>
+<body>
+  <header>
+    <img src="icons/icon-192.png" alt="logo" width="28" height="28" style="border-radius:6px">
+    <h1>Mangazinho</h1>
+    <div class="spacer"></div>
+    <button class="icon" id="installBtn" title="Instalar">📲</button>
+    <button class="icon" id="exportBtn" title="Exportar biblioteca">⬇️</button>
+    <button class="icon" id="importBtn" title="Importar biblioteca">⬆️</button>
+  </header>
+
+  <main class="container">
+    <div class="toolbar">
+      <button class="btn" id="newSeriesBtn">+ Nova Série</button>
+    </div>
+    <div class="grid" id="seriesGrid"><div class="sub">Sem séries ainda. Clique em “+ Nova Série”.</div></div>
+    <p class="hint">Tudo fica salvo <b>no seu dispositivo</b> (IndexedDB). Funciona offline. Você pode exportar/importar sua biblioteca.</p>
+  </main>
+
+  <button class="fab" id="quickNew">+ Série</button>
+
+  <!-- Dialog Nova Série -->
+  <dialog id="seriesDialog">
+    <form method="dialog" class="modal">
+      <h3>Nova série</h3>
+      <input id="seriesTitle" placeholder="Título da série">
+      <label class="hint">Capa (opcional): <input id="seriesCover" type="file" accept="image/*"></label>
+      <div class="row" style="justify-content:flex-end">
+        <button class="btn secondary" value="cancel">Cancelar</button>
+        <button id="saveSeries" class="btn" value="ok">Salvar</button>
+      </div>
+    </form>
+  </dialog>
+
+  <!-- Dialog Novo Capítulo -->
+  <dialog id="chapterDialog">
+    <form method="dialog" class="modal">
+      <h3>Novo capítulo</h3>
+      <input id="chapterTitle" placeholder="Título do capítulo (ex: Cap. 1)">
+      <label class="hint">Páginas (ordem pelo nome do arquivo): <input id="chapterPages" type="file" accept="image/*" multiple></label>
+      <div class="row" style="justify-content:flex-end">
+        <button class="btn secondary" value="cancel">Cancelar</button>
+        <button id="saveChapter" class="btn" value="ok">Salvar</button>
+      </div>
+    </form>
+  </dialog>
+
+  <!-- Reader -->
+  <section class="reader" id="reader">
+    <div class="rbar">
+      <button class="icon" id="closeReader">⬅️</button>
+      <div class="crumb" id="readerCrumb">Série / Capítulo</div>
+      <div class="spacer"></div>
+      <button class="icon" id="delChapter">🗑️</button>
+      <button class="icon" id="prevChapter">⏮️</button>
+      <button class="icon" id="nextChapter">⏭️</button>
+    </div>
+    <div class="rbody"><img id="pageImg" class="page" alt="Página"></div>
+    <div class="nav">
+      <button id="prevPage">Página ◀</button>
+      <span id="pageInfo" class="crumb"></span>
+      <button id="nextPage">▶ Página</button>
+    </div>
+  </section>
+
+<script>
+// --- DB ---
+const dbName="mangazinho-db", stores={series:"series", chapters:"chapters", pages:"pages", progress:"progress"};
+function openDB(){return new Promise((res,rej)=>{const r=indexedDB.open(dbName,1);r.onupgradeneeded=()=>{const db=r.result;db.createObjectStore(stores.series,{keyPath:"id"});db.createObjectStore(stores.chapters,{keyPath:"id"});db.createObjectStore(stores.pages,{keyPath:["chapterId","index"]});db.createObjectStore(stores.progress,{keyPath:["seriesId","chapterId"]});};r.onsuccess=()=>res(r.result);r.onerror=e=>rej(e.target.error)})}
+async function idb(store, mode, op){const db=await openDB();return new Promise((res,rej)=>{const tx=db.transaction(store,mode);const st=tx.objectStore(store);const req=op(st);tx.oncomplete=()=>res(req.result);tx.onerror=()=>rej(tx.error)})}
+const all = (store)=> idb(store,"readonly",st=>st.getAll());
+const put = (store,val)=> idb(store,"readwrite",st=>st.put(val));
+const del = (store,key)=> idb(store,"readwrite",st=>st.delete(key));
+
+// --- State ---
+const grid = document.getElementById("seriesGrid");
+const seriesDialog = document.getElementById("seriesDialog");
+const chapterDialog = document.getElementById("chapterDialog");
+let currentSeries=null, currentChapter=null, pages=[], pageIndex=0, chaptersCache=[];
+
+// --- UI helpers ---
+function el(tag, props={}, ...children){const e=document.createElement(tag);Object.assign(e,props);children.forEach(c=>e.appendChild(typeof c==='string'?document.createTextNode(c):c));return e;}
+function blobURL(b){return URL.createObjectURL(b);}
+
+// --- Render series list ---
+async function renderSeries(){
+  const list = await all(stores.series);
+  grid.innerHTML="";
+  if(!list.length){ grid.appendChild(el("div",{className:"sub",textContent:"Sem séries ainda. Clique em “+ Nova Série”."})); return; }
+  list.sort((a,b)=> (b.updatedAt||b.createdAt)-(a.updatedAt||a.createdAt));
+  for(const s of list){
+    const card = el("article",{className:"card"});
+    const th = el("div",{className:"thumb"});
+    if(s.cover){ const img = el("img",{src: await blobURL(s.cover)}); th.appendChild(img);} else { th.appendChild(el("div",{className:"sub",textContent:"Sem capa"})); }
+    const meta = el("div",{className:"meta"});
+    const title = el("div",{className:"title",textContent:s.title||"Sem título"});
+    const chaptersLabel = el("div",{className:"sub"});
+    // Count chapters
+    const chs = (await all(stores.chapters)).filter(c=>c.seriesId===s.id);
+    chaptersLabel.textContent = chs.length + " capítulo(s)";
+    const row = el("div",{className:"row"});
+    const open = el("button",{className:"btn",textContent:"Abrir"});
+    open.onclick = ()=> openSeries(s);
+    const add = el("button",{className:"btn secondary",textContent:"+ Capítulo"});
+    add.onclick = ()=> { currentSeries=s; document.getElementById("chapterTitle").value=""; document.getElementById("chapterPages").value=""; chapterDialog.showModal(); };
+    const remove = el("button",{className:"btn secondary",textContent:"Excluir"});
+    remove.onclick = async ()=>{ if(confirm("Excluir a série e todos os capítulos?")){ // delete chapters & pages
+        const chapters = (await all(stores.chapters)).filter(c=>c.seriesId===s.id);
+        for(const c of chapters){ await del(stores.chapters,c.id); let i=0; while(true){ try{ await del(stores.pages,[c.id,i]); i++; }catch{ break; } } }
+        await del(stores.series,s.id); renderSeries();
+      } };
+    row.append(open, add, remove);
+    meta.append(title, chaptersLabel, row);
+    card.append(th, meta);
+    grid.appendChild(card);
+  }
+}
+
+// --- Open series: list chapters ---
+async function openSeries(s){
+  currentSeries=s;
+  chaptersCache = (await all(stores.chapters)).filter(c=>c.seriesId===s.id).sort((a,b)=>a.order-b.order);
+  const list = chaptersCache;
+  // Build simple overlay listing chapters
+  const overlay = el("dialog",{id:"chaptersList"});
+  const box = el("div",{className:"modal"});
+  box.appendChild(el("h3",{textContent:s.title}));
+  if(!list.length) box.appendChild(el("div",{className:"sub",textContent:"Sem capítulos ainda."}));
+  for(const c of list){
+    const row = el("div",{className:"row"});
+    row.style.justifyContent="space-between";
+    const left = el("div",{}, el("div",{textContent:c.title||"Sem título"}), el("div",{className:"sub",textContent:(c.pages||0)+" página(s)"}));
+    const read = el("button",{className:"btn",textContent:"Ler"}); read.onclick=()=>{ overlay.close(); document.body.removeChild(overlay); openReader(c); };
+    const delBtn = el("button",{className:"btn secondary",textContent:"Excluir"}); delBtn.onclick=async()=>{ if(confirm("Excluir capítulo?")){ await del(stores.chapters,c.id); let i=0; while(true){ const ok = await del(stores.pages,[c.id,i]).then(()=>true).catch(()=>false); if(!ok) break; i++; } overlay.close(); document.body.removeChild(overlay); renderSeries(); } };
+    row.append(left, el("div",{}, read," ", delBtn));
+    box.appendChild(row);
+  }
+  const addBtn = el("button",{className:"btn",textContent:"+ Capítulo"});
+  addBtn.onclick=()=>{ overlay.close(); document.body.removeChild(overlay); document.getElementById("chapterTitle").value=""; document.getElementById("chapterPages").value=""; chapterDialog.showModal(); };
+  box.appendChild(addBtn);
+  overlay.appendChild(box);
+  document.body.appendChild(overlay);
+  overlay.showModal();
+}
+
+// --- Reader ---
+const reader = document.getElementById("reader");
+const pageImg = document.getElementById("pageImg");
+const pageInfo = document.getElementById("pageInfo");
+document.getElementById("closeReader").onclick = ()=>{ reader.style.display="none"; renderSeries(); };
+document.getElementById("prevPage").onclick = ()=>{ if(pageIndex>0){ pageIndex--; renderPage(); } };
+document.getElementById("nextPage").onclick = ()=>{ if(pageIndex<pages.length-1){ pageIndex++; renderPage(); } };
+document.getElementById("prevChapter").onclick = ()=>{ if(!currentChapter) return; const idx = chaptersCache.findIndex(c=>c.id===currentChapter.id); if(idx>0){ openReader(chaptersCache[idx-1]); } };
+document.getElementById("nextChapter").onclick = ()=>{ if(!currentChapter) return; const idx = chaptersCache.findIndex(c=>c.id===currentChapter.id); if(idx<chaptersCache.length-1){ openReader(chaptersCache[idx+1]); } };
+document.getElementById("delChapter").onclick = async ()=>{ if(currentChapter && confirm("Excluir este capítulo?")){ await del(stores.chapters,currentChapter.id); for(let i=0;i<pages.length;i++) await del(stores.pages,[currentChapter.id,i]); reader.style.display="none"; renderSeries(); } };
+
+async function openReader(ch){
+  currentChapter = ch;
+  // load pages
+  pages = [];
+  for(let i=0;i<ch.pages;i++){ const p = await idb(stores.pages,"readonly",st=>st.get([ch.id,i])); if(p && p.blob) pages.push(p.blob); }
+  pageIndex=0;
+  reader.style.display="flex";
+  document.getElementById("readerCrumb").textContent = (currentSeries?.title||"Série")+" / "+(ch.title||"Capítulo");
+  renderPage();
+}
+function renderPage(){
+  if(!pages.length){ pageImg.classList.add("hidden"); pageInfo.textContent="0/0"; return; }
+  pageImg.src = URL.createObjectURL(pages[pageIndex]);
+  pageImg.classList.remove("hidden");
+  pageInfo.textContent = (pageIndex+1)+" / "+pages.length;
+}
+
+// --- Create series ---
+document.getElementById("newSeriesBtn").onclick = ()=> seriesDialog.showModal();
+document.getElementById("quickNew").onclick = ()=> seriesDialog.showModal();
+document.getElementById("saveSeries").onclick = async (e)=>{
+  e.preventDefault();
+  const title = document.getElementById("seriesTitle").value.trim()||"Sem título";
+  const coverFile = document.getElementById("seriesCover").files[0];
+  let coverBlob = null;
+  if(coverFile){ coverBlob = await coverFile.arrayBuffer().then(b=>new Blob([b],{type:coverFile.type||"image/png"})); }
+  const s = {id:crypto.randomUUID(), title, createdAt:Date.now(), updatedAt:Date.now(), cover:coverBlob};
+  await put(stores.series, s);
+  seriesDialog.close();
+  renderSeries();
+};
+
+// --- Create chapter ---
+document.getElementById("saveChapter").onclick = async (e)=>{
+  e.preventDefault();
+  const title = document.getElementById("chapterTitle").value.trim()||"Capítulo";
+  const files = Array.from(document.getElementById("chapterPages").files||[]);
+  if(!currentSeries){ alert("Abra uma série primeiro."); return; }
+  if(!files.length){ alert("Selecione as páginas (imagens)."); return; }
+  // Ordenar por nome
+  files.sort((a,b)=> a.name.localeCompare(b.name, undefined, {numeric:true,sensitivity:'base'}));
+  const ch = {id:crypto.randomUUID(), seriesId:currentSeries.id, title, createdAt:Date.now(), updatedAt:Date.now(), order:Date.now(), pages:files.length};
+  await put(stores.chapters, ch);
+  // salvar páginas
+  let idx=0;
+  for(const f of files){
+    const blob = new Blob([await f.arrayBuffer()], {type:f.type||"image/png"});
+    await put(stores.pages, {chapterId:ch.id, index:idx, blob});
+    idx++;
+  }
+  chapterDialog.close();
+  renderSeries();
+};
+
+// --- Export/Import ---
+document.getElementById("exportBtn").onclick = async ()=>{
+  const series = await all(stores.series);
+  const chapters = await all(stores.chapters);
+  const exportObj = {version:1, series:[], chapters:[], pages:{}};
+  exportObj.series = series.map(s=>({...s, cover: undefined}));
+  // covers
+  for(const s of series){ if(s.cover){ const b64 = await blobToDataURL(s.cover); exportObj.pages["cover_"+s.id]=b64; } }
+  exportObj.chapters = chapters;
+  for(const c of chapters){
+    for(let i=0;i<c.pages;i++){ const rec = await idb(stores.pages,"readonly",st=>st.get([c.id,i])); if(rec && rec.blob){ const b64 = await blobToDataURL(rec.blob); exportObj.pages[c.id+"_"+i]=b64; } }
+  }
+  const data = new Blob([JSON.stringify(exportObj)],{type:"application/json"});
+  const a = document.createElement("a"); a.href=URL.createObjectURL(data); a.download="mangazinho_export.json"; a.click();
+};
+document.getElementById("importBtn").onclick = async ()=>{
+  const inp = document.createElement("input"); inp.type="file"; inp.accept="application/json";
+  inp.onchange = async ()=>{
+    const file = inp.files[0]; if(!file) return;
+    const data = JSON.parse(await file.text());
+    if(!data || data.version!==1){ alert("Arquivo inválido."); return; }
+    // restore
+    for(const s of data.series){
+      let cover=null; const key="cover_"+s.id; if(data.pages[key]) cover = dataURLToBlob(data.pages[key]);
+      await put(stores.series, {...s, cover});
+    }
+    for(const c of data.chapters){ await put(stores.chapters, c); for(let i=0;i<c.pages;i++){ const key=c.id+"_"+i; if(data.pages[key]){ await put(stores.pages, {chapterId:c.id,index:i, blob:dataURLToBlob(data.pages[key])}); } } }
+    renderSeries();
+    alert("Importado com sucesso.");
+  };
+  inp.click();
+};
+
+async function blobToDataURL(blob){ return new Promise((res)=>{ const r=new FileReader(); r.onload=()=>res(r.result); r.readAsDataURL(blob); }); }
+function dataURLToBlob(dataURL){ const [meta, b64]=dataURL.split(","); const mime = (meta.match(/:(.*?);/)||[])[1]||"application/octet-stream"; const bin = atob(b64); const arr=new Uint8Array(bin.length); for(let i=0;i<bin.length;i++) arr[i]=bin.charCodeAt(i); return new Blob([arr],{type:mime});}
+
+// --- Install prompt ---
+let deferredPrompt=null;
+window.addEventListener('beforeinstallprompt', (e)=>{ e.preventDefault(); deferredPrompt=e; document.getElementById("installBtn").style.opacity=1; });
+document.getElementById("installBtn").onclick = async ()=>{ if(deferredPrompt){ deferredPrompt.prompt(); await deferredPrompt.userChoice; deferredPrompt=null; } };
+
+// --- SW ---
+if("serviceWorker" in navigator){ navigator.serviceWorker.register("sw.js"); }
+
+renderSeries();
+</script>
+</body>
+</html>
