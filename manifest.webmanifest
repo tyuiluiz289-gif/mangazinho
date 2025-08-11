@@ -1,7 +1,7 @@
 {
   "name": "Mangazinho",
   "short_name": "Mangazinho",
-  "description": "Leitor de mangás online simples e rápido.",
+  "description": "Leitor de mangás online simples e rápido",
   "id": "/",
   "start_url": ".",
   "display": "standalone",
