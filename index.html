@@ -305,3 +305,53 @@ renderSeries();
 <meta name="apple-mobile-web-app-capable" content="yes">
 <script src="mangazinho-multichapter.js"></script>
 <script src="seu-script-principal.js"></script>
+<script>
+// garante uma série
+const seriesId = Store.upsertSeries({ title: "Tirano" });
+
+// criar capítulo de teste (cap 1) com 2 páginas fake
+function criarCapTeste(){
+  const chapId = Store.upsertChapter({ seriesId, number: 1, title: "Cap. 1" });
+  Store.savePages(chapId, [
+    { index: 1, src: "https://via.placeholder.co/800x1200?text=Pag+1" },
+    { index: 2, src: "https://via.placeholder.co/800x1200?text=Pag+2" },
+  ]);
+  alert("Capítulo salvo! Atualize a lista.");
+}
+
+// listar capítulos
+function listarCaps(){
+  const caps = Store.listChapters(seriesId);
+  console.log("Capítulos:", caps);
+  const ul = document.getElementById("caps");
+  ul.innerHTML = "";
+  caps.forEach(c => {
+    const li = document.createElement("li");
+    li.textContent = `${c.number || "?"} – ${c.title} (${c.pageCount} páginas)`;
+    li.onclick = () => abrirCap(c.id);
+    ul.appendChild(li);
+  });
+}
+
+// abrir capítulo
+function abrirCap(chapId){
+  const pages = Store.getPages(chapId);
+  console.log("Páginas:", pages);
+  const cont = document.getElementById("leitor");
+  cont.innerHTML = "";
+  pages.forEach(p => {
+    const img = document.createElement("img");
+    img.src = p.src;
+    img.style.maxWidth = "100%";
+    cont.appendChild(img);
+  });
+}
+</script>
+
+<!-- UI mínima pra testar -->
+<div style="padding:12px">
+  <button onclick="criarCapTeste()">Criar Capítulo de Teste</button>
+  <button onclick="listarCaps()">Listar Capítulos</button>
+  <ul id="caps"></ul>
+  <div id="leitor"></div>
+</div>
